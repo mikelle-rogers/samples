@@ -49,14 +49,24 @@ namespace testwebapi.Controllers
         {
             lock (o1)
             {
-                (new Thread(() =>
-                {
-                    lock (o2) { Monitor.Enter(o1); }
-                })).Start();
+                (new Thread(InvertedLockAcquire)).Start();
 
                 Thread.Sleep(2000);
                 Monitor.Enter(o2);
             }
+
+            void InvertedLockAcquire()
+            {
+                int retryCount = 0;
+                lock (o2)
+                { 
+                    while (!Monitor.IsEntered(o1) && retryCount < 3)
+                    {
+                        Monitor.TryEnter(o1, 500);
+                        retryCount++;
+                    }
+                }
+            };
         }
 
         [HttpGet]
